@@ -59,7 +59,7 @@ docker compose down
 docker compose down -v
 ```
 
-- API: http://localhost:8000/api
+- API: http://localhost:8000
 - Frontend: http://localhost:3000
 
 `migrate --seed` crea las tablas y carga 14 medios de ejemplo y un cliente demo.
