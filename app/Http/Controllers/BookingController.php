@@ -7,30 +7,30 @@ use App\Models\Media;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
+use App\Http\Requests\BookingStatusUpdateRequest;
+use App\Http\Requests\BookingStoreRequest;
+use App\Http\Resources\BookingResource; 
+
 class BookingController extends Controller
 {
     public function index(Request $request)
     {
-    return Booking::with(['media', 'customer'])
-        ->when($request->status, fn ($q, $v) => $q->where('status', $v))
-        ->when($request->media_id, fn ($q, $v) => $q->where('media_id', $v))
-        ->when($request->customer_id, fn ($q, $v) => $q->where('customer_id', $v))
-        ->when($request->from, fn ($q, $v) => $q->where('ends_at', '>=', $v))
-        ->when($request->to, fn ($q, $v) => $q->where('starts_at', '<=', $v))
-        ->latest()
-        ->paginate($request->integer('per_page', 10))
-        ->withQueryString();
+        $bookings = Booking::with(['media', 'customer'])
+            ->when($request->status, fn ($q, $v) => $q->where('status', $v))
+            ->when($request->media_id, fn ($q, $v) => $q->where('media_id', $v))
+            ->when($request->customer_id, fn ($q, $v) => $q->where('customer_id', $v))
+            ->when($request->from, fn ($q, $v) => $q->where('ends_at', '>=', $v))
+            ->when($request->to, fn ($q, $v) => $q->where('starts_at', '<=', $v))
+            ->latest()
+            ->paginate($request->integer('per_page', 10))
+            ->withQueryString();
+
+        return BookingResource::collection($bookings);
     }
 
-    public function store(Request $request)
+    public function store(BookingStoreRequest $request)
     {
-        $data = $request->validate([
-            'media_id' => 'required|exists:media,id',
-            'customer_id' => 'required|exists:customers,id',
-            'starts_at' => 'required|date',
-            'ends_at' => 'required|date|after_or_equal:starts_at',
-        ]);
-
+        $data = $request->validated();
         $media = Media::findOrFail($data['media_id']);
 
         if ($media->status !== 'active') {
@@ -55,22 +55,18 @@ class BookingController extends Controller
             'status' => 'pending',
         ]);
 
-        return response()->json($booking->load(['media', 'customer']), 201);
+        return (new BookingResource($booking->load(['media', 'customer'])))
+            ->response()->setStatusCode(201);
     }
 
     public function show(Booking $booking)
     {
-        return $booking->load(['media', 'customer']);
+        return new BookingResource($booking->load(['media', 'customer']));
     }
 
-    public function updateStatus(Request $request, Booking $booking)
+    public function updateStatus(BookingStatusUpdateRequest $request, Booking $booking)
     {
-    $data = $request->validate([
-        'status' => 'required|in:pending,confirmed,cancelled',
-    ]);
-
-    $booking->update($data);
-
-    return $booking->load(['media', 'customer']);
+        $booking->update($request->validated());
+        return new BookingResource($booking->load(['media', 'customer']));
     }
 }

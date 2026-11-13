@@ -5,26 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 
+use App\Http\Requests\CustomerStoreRequest;
+use App\Http\Resources\CustomerResource;
+
 class CustomerController extends Controller
 {
+
     public function index()
     {
-        return Customer::orderBy('name')->get();
+        return CustomerResource::collection(Customer::orderBy('name')->get());
     }
 
-    public function store(Request $request)
+        public function store(CustomerStoreRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:customers,email',
-            'phone' => 'nullable|string|max:30',
-        ]);
-
-        return response()->json(Customer::create($data), 201);
+        return (new CustomerResource(Customer::create($request->validated())))
+            ->response()->setStatusCode(201);
     }
 
     public function show(Customer $customer)
     {
-        return $customer->load('bookings');
+        return new CustomerResource($customer);
     }
 }

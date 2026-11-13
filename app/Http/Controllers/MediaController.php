@@ -5,20 +5,26 @@ namespace App\Http\Controllers;
 use App\Models\Media;
 use Illuminate\Http\Request;
 
+use App\Http\Requests\MediaStoreRequest;
+use App\Http\Requests\MediaUpdateRequest;
+use App\Http\Resources\MediaResource;
+
 class MediaController extends Controller
 {
+
     public function index(Request $request)
     {
-    return Media::query()
-        ->when($request->type, fn ($q, $v) => $q->where('type', $v))
-        ->when($request->status, fn ($q, $v) => $q->where('status', $v))
-        ->when($request->search, fn ($q, $v) => $q->where(function ($q) use ($v) {
-            $q->where('name', 'like', "%{$v}%")
-              ->orWhere('location', 'like', "%{$v}%");
-        }))
-        ->orderBy('name')
-        ->paginate($request->integer('per_page', 10))
-        ->withQueryString();
+        $media = Media::query()
+            ->when($request->type, fn ($q, $v) => $q->where('type', $v))
+            ->when($request->status, fn ($q, $v) => $q->where('status', $v))
+            ->when($request->search, fn ($q, $v) => $q->where(function ($q) use ($v) {
+                $q->where('name', 'like', "%{$v}%")->orWhere('location', 'like', "%{$v}%");
+            }))
+            ->orderBy('name')
+            ->paginate($request->integer('per_page', 10))
+            ->withQueryString();
+
+        return MediaResource::collection($media);
     }
 
     public function availability(Request $request, Media $media)
@@ -41,39 +47,21 @@ class MediaController extends Controller
         ];
     }
 
-    public function store(Request $request)
+    public function store(MediaStoreRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|string|max:50',
-            'location' => 'required|string|max:255',
-            'dimensions' => 'required|string|max:50',
-            'price_per_day' => 'required|numeric|min:0',
-            'status' => 'in:active,inactive',
-        ]);
-
-        return response()->json(Media::create($data), 201);
+        return (new MediaResource(Media::create($request->validated())))
+            ->response()->setStatusCode(201);
     }
 
     public function show(Media $media)
     {
-        return $media;
+        return new MediaResource($media);
     }
 
-    public function update(Request $request, Media $media)
+    public function update(MediaUpdateRequest $request, Media $media)
     {
-        $data = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'type' => 'sometimes|string|max:50',
-            'location' => 'sometimes|string|max:255',
-            'dimensions' => 'sometimes|string|max:50',
-            'price_per_day' => 'sometimes|numeric|min:0',
-            'status' => 'sometimes|in:active,inactive',
-        ]);
-
-        $media->update($data);
-
-        return $media;
+        $media->update($request->validated());
+        return new MediaResource($media);
     }
 
     public function destroy(Media $media)
