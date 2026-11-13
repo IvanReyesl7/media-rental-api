@@ -1,58 +1,96 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Media Rental API (Laravel)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API REST para gestionar medios publicitarios (vallas, pantallas, mupis, muros), clientes y reservas de alquiler.
 
-## About Laravel
+## Requisitos
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Docker Desktop (incluye Docker Compose v2)
+- Git
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+No necesitas PHP, Composer, Node ni MySQL instalados: todo corre en contenedores.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Instalación
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+El frontend y el backend son dos repositorios. Clónalos **uno al lado del otro**:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+mkdir prueba-practica && cd prueba-practica
+git clone https://github.com/IvanReyesl7/media-rental-api.git backend
+git clone https://github.com/IvanReyesl7/media-rental-frontend.git frontend
+cd backend
+cp .env.example .env
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Variables de entorno
 
-## Contributing
+Se configuran en `backend/.env` (ver `.env.example`):
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Variable | Valor por defecto | Descripción |
+|---|---|---|
+| `APP_KEY` | (se genera) | Clave de la aplicación (`php artisan key:generate`) |
+| `DB_CONNECTION` | `mysql` | Driver de base de datos |
+| `DB_HOST` | `db` | Nombre del servicio MySQL en Docker Compose |
+| `DB_PORT` | `3306` | Puerto de MySQL |
+| `DB_DATABASE` | `app` | Nombre de la base de datos |
+| `DB_USERNAME` | `app` | Usuario |
+| `DB_PASSWORD` | `secret` | Contraseña |
 
-## Code of Conduct
+Estos valores deben coincidir con los de `docker-compose.yml` (servicio `db`).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Comandos para correr el proyecto
 
-## Security Vulnerabilities
+Desde la carpeta `backend/`:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+# 1. Construir e iniciar backend, frontend y base de datos
+docker compose up --build
 
-## License
+# 2. En otra terminal (esperar ~30 s a que MySQL inicie la primera vez)
+docker compose exec backend php artisan key:generate
+docker compose exec backend php artisan migrate --seed
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 3. Ejecutar los tests
+docker compose exec backend php artisan test
+
+# Detener todo (conserva la base de datos)
+docker compose down
+
+# Detener y borrar la base de datos
+docker compose down -v
+```
+
+- API: http://localhost:8000/api
+- Frontend: http://localhost:3000
+
+`migrate --seed` crea las tablas y carga 14 medios de ejemplo y un cliente demo.
+
+## Endpoints
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/media` | Lista paginada. Filtros: `type`, `status`, `search`, `per_page`, `page` |
+| POST | `/api/media` | Crear medio |
+| GET | `/api/media/{id}` | Detalle |
+| PUT | `/api/media/{id}` | Actualizar |
+| DELETE | `/api/media/{id}` | Eliminar (409 si tiene reservas) |
+| GET | `/api/media/{id}/availability?starts_at=YYYY-MM-DD&ends_at=YYYY-MM-DD` | Disponibilidad y conflictos |
+| GET | `/api/customers` | Listar clientes |
+| POST | `/api/customers` | Crear cliente |
+| GET | `/api/customers/{id}` | Detalle |
+| GET | `/api/bookings` | Lista paginada. Filtros: `status`, `media_id`, `customer_id`, `from`, `to` |
+| POST | `/api/bookings` | Crear reserva |
+| GET | `/api/bookings/{id}` | Detalle |
+| PATCH | `/api/bookings/{id}/status` | Cambiar estado (`pending`, `confirmed`, `cancelled`) |
+
+Enviar siempre el encabezado `Accept: application/json`.
+
+## Decisiones técnicas
+
+- **Docker Compose con un contenedor por servicio** (backend, frontend, MySQL). Los servicios se comunican por nombre (`DB_HOST=db`) y el código se monta como volumen para desarrollo con recarga en vivo.
+- **Form Requests** (`MediaStoreRequest`, `MediaUpdateRequest`, `CustomerStoreRequest`, `BookingStoreRequest`, `BookingStatusUpdateRequest`) para que los controladores solo coordinen y la validación quede en un solo lugar.
+- **API Resources** (`MediaResource`, `CustomerResource`, `BookingResource`) para tener respuestas consistentes: precios siempre numéricos, sin campos internos, y relaciones solo cuando se cargan (`whenLoaded`).
+- **El precio total lo calcula el servidor**: `días × price_per_day`, contando ambos extremos como días (del 1 al 3 son 3 días). El cliente nunca envía el precio.
+- **Regla de solapamiento**: una reserva choca con otra del mismo medio si `inicio_existente <= fin_nuevo` y `fin_existente >= inicio_nuevo`. Las reservas canceladas no bloquean fechas, y un medio inactivo no se puede reservar.
+- **Integridad referencial**: llaves foráneas con `restrictOnDelete()`. Un medio o cliente con reservas no se puede borrar; el controlador responde 409 con un mensaje claro en vez de un error 500.
+- **Paginación y filtros** con `paginate()` + `withQueryString()`, para que los enlaces conserven los filtros. La búsqueda aplica a nombre y ubicación.
+- **Tests de feature** (`tests/Feature/BookingTest.php`) para el cálculo de precio, el solapamiento, la cancelación y las validaciones. Usan SQLite en memoria, sin tocar los datos de MySQL.
