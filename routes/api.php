@@ -7,12 +7,6 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\MediaController;
 
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
-
-Route::get('/ping', fn () => ['message' => 'Hello from Laravel']);
-
 Route::get('/media/{media}/availability', [MediaController::class, 'availability']);
 Route::apiResource('media', MediaController::class)->parameters(['media' => 'media']);
 
